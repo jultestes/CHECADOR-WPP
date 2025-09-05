@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ações</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #0a0f1c;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+
+    button {
+      width: 90%;
+      max-width: 600px;
+      padding: 18px;
+      margin: 12px 0;
+      font-size: 18px;
+      font-weight: bold;
+      color: white;
+      background-color: #2563eb;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #1e40af;
+    }
+  </style>
+</head>
+<body>
+
+  <button onclick="mostrarWpp()">Mostrar WhatsApp no Celular</button>
+  <button onclick="apagarNotif()">Apagar Notificação</button>
+
+  <script>
+    function mostrarWpp() {
+      fetch("https://trigger.macrodroid.com/82fcac6e-2e94-48d6-898c-05a1da716715/mostrar-wpp", {
+        method: "GET"
+      })
+      .then(() => alert("Requisição enviada com sucesso!"))
+      .catch(() => alert("Erro ao enviar requisição."));
+    }
+
+    function apagarNotif() {
+      fetch("https://trigger.macrodroid.com/82fcac6e-2e94-48d6-898c-05a1da716715/apagar-not", {
+        method: "GET"
+      })
+      .then(() => alert("Requisição enviada com sucesso!"))
+      .catch(() => alert("Erro ao enviar requisição."));
+    }
+  </script>
+
+</body>
+</html>
