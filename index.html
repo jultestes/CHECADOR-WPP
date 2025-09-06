@@ -9,12 +9,21 @@
       margin: 0;
       padding: 0;
       background-color: #0a0f1c;
-      font-family: sans-serif;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Arial, sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      height: 100vh;
+      justify-content: flex-start;
+      min-height: 100vh;
+      color: #e5e7eb;
+      padding-top: 48px;
+    }
+
+    h1 {
+      margin: 0 0 18px 0;
+      font-size: 20px;
+      font-weight: 700;
+      color: #cbd5e1;
     }
 
     button {
@@ -23,40 +32,202 @@
       padding: 18px;
       margin: 12px 0;
       font-size: 18px;
-      font-weight: bold;
+      font-weight: 700;
       color: white;
       background-color: #2563eb;
       border: none;
       border-radius: 12px;
       cursor: pointer;
-      transition: background-color 0.3s ease;
+      transition: background-color 0.25s ease;
     }
 
-    button:hover {
-      background-color: #1e40af;
+    button:hover { background-color: #1e40af; }
+
+    #erros {
+      width: 90%;
+      max-width: 900px;
+      margin-top: 24px;
+      padding: 0 10px 40px 10px;
+      font-size: 14px;
     }
+
+    #erros h2 {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 0 0 10px 0;
+      color: #cbd5e1;
+    }
+
+    #erros ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 8px;
+    }
+
+    #erros li {
+      background-color: #111827;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border-left: 4px solid #374151;
+      line-height: 1.35;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+
+    .ok { border-left-color: #10b981 !important; }
+    .fail { border-left-color: #dc2626 !important; }
+
+    .muted { color: #9ca3af; font-size: 12px; display: block; margin-top: 6px; }
   </style>
 </head>
 <body>
 
-  <button onclick="mostrarWpp()">Mostrar WhatsApp no Celular</button>
+  <h1>Ações</h1>
+
+  <button onclick="mostrarWpp()">Mostrar WhatsApp no Celular (todos os macros)</button>
   <button onclick="apagarNotif()">Apagar Notificação</button>
 
+  <div id="erros">
+    <h2>Resultados</h2>
+    <ul id="lista-erros"></ul>
+  </div>
+
   <script>
-    function mostrarWpp() {
-      fetch("https://trigger.macrodroid.com/82fcac6e-2e94-48d6-898c-05a1da716715/mostrar-wpp", {
-        method: "GET"
-      })
-      .then(() => alert("Requisição enviada com sucesso!"))
-      .catch(() => alert("Erro ao enviar requisição."));
+    // ======= Config Supabase (fornecida por você) =======
+    const SUPABASE_URL = "https://supa.viva-sorte-official.com/rest/v1/WHATSAPP-MACRO?select=MACRO-ANDROID";
+    const SUPABASE_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzE1MDUwODAwLAogICJleHAiOiAxODcyODE3MjAwCn0.DXlyfsGzenlcExlvG4G7pOLvQpwbuiUXKrCXc4pocSQ";
+    const SUPABASE_HEADERS = {
+      "apikey": SUPABASE_API_KEY,
+      "Authorization": "Bearer " + SUPABASE_API_KEY
+    };
+
+    // ======= Helpers UI =======
+    function adicionarLinha(texto, ok = null) {
+      const lista = document.getElementById("lista-erros");
+      const li = document.createElement("li");
+      li.textContent = texto;
+
+      if (ok === true) li.classList.add("ok");
+      if (ok === false) li.classList.add("fail");
+
+      lista.appendChild(li);
+      return li;
+    }
+
+    function adicionarBloco(titulo, detalhes = "", ok = null) {
+      const lista = document.getElementById("lista-erros");
+      const li = document.createElement("li");
+      const strong = document.createElement("strong");
+      strong.textContent = titulo;
+      li.appendChild(strong);
+
+      if (detalhes) {
+        const span = document.createElement("span");
+        span.className = "muted";
+        span.textContent = detalhes;
+        li.appendChild(document.createElement("br"));
+        li.appendChild(span);
+      }
+
+      if (ok === true) li.classList.add("ok");
+      if (ok === false) li.classList.add("fail");
+
+      lista.appendChild(li);
+      return li;
+    }
+
+    function trunc(str, n = 280) {
+      if (typeof str !== "string") return String(str);
+      return str.length > n ? str.slice(0, n) + "…" : str;
+    }
+
+    // ======= Fluxo principal =======
+    async function mostrarWpp() {
+      // limpa lista
+      document.getElementById("lista-erros").innerHTML = "";
+
+      // 1) Buscar todos os IDs na coluna MACRO-ANDROID
+      adicionarBloco("Buscando IDs no Supabase…");
+
+      let ids = [];
+      try {
+        const r = await fetch(SUPABASE_URL, { headers: SUPABASE_HEADERS });
+        const ct = r.headers.get("content-type") || "";
+        if (!r.ok) {
+          adicionarBloco(`Falha ao buscar Supabase (HTTP ${r.status})`, `Content-Type: ${ct}`, false);
+          return;
+        }
+
+        const data = ct.includes("application/json") ? await r.json() : [];
+        ids = (data || [])
+          .map(row => row?.["MACRO-ANDROID"])
+          .filter(v => typeof v === "string" && v.trim().length > 0);
+
+        if (ids.length === 0) {
+          adicionarBloco("Nenhum ID encontrado em MACRO-ANDROID.", "", false);
+          return;
+        }
+
+        adicionarBloco(`IDs obtidos: ${ids.length}`, ids.join(", "));
+      } catch (err) {
+        adicionarBloco("Erro ao consultar Supabase", String(err?.message || err), false);
+        return;
+      }
+
+      // 2) Disparar requisições para cada webhook
+      const resultados = [];
+      const tarefas = ids.map(async (idRaw) => {
+        const id = String(idRaw).trim();
+        const url = `https://trigger.macrodroid.com/${encodeURIComponent(id)}/mostrar-wpp`;
+
+        try {
+          const resp = await fetch(url, { method: "GET" });
+          const contentType = resp.headers.get("content-type") || "";
+          let corpo;
+
+          if (contentType.includes("application/json")) {
+            try {
+              corpo = JSON.stringify(await resp.json());
+            } catch {
+              corpo = await resp.text();
+            }
+          } else {
+            corpo = await resp.text();
+          }
+
+          const sucessoHeuristica = (() => {
+            const t = (corpo || "").toString().toLowerCase();
+            return resp.ok || t.includes("ok") || t.includes("feito") || t.includes("success") || t.includes('"success":true');
+          })();
+
+          resultados.push({ id, status: resp.status, body: corpo, ok: sucessoHeuristica });
+          adicionarBloco(
+            `Webhook: ${id} → HTTP ${resp.status}`,
+            `URL: ${url}\nResposta: ${trunc(corpo)}`,
+            sucessoHeuristica
+          );
+        } catch (e) {
+          resultados.push({ id, status: "erro", body: String(e?.message || e), ok: false });
+          adicionarBloco(
+            `Webhook: ${id} → ERRO`,
+            `URL: ${url}\nErro: ${String(e?.message || e)}`,
+            false
+          );
+        }
+      });
+
+      await Promise.allSettled(tarefas);
+
+      // 3) Resumo final
+      const okCount = resultados.filter(r => r.ok).length;
+      const failCount = resultados.length - okCount;
+      adicionarBloco(`Concluído: ${resultados.length} webhooks`, `Sucesso: ${okCount} • Falha: ${failCount}`, okCount > 0 && failCount === 0);
     }
 
     function apagarNotif() {
-      fetch("https://trigger.macrodroid.com/82fcac6e-2e94-48d6-898c-05a1da716715/apagar-not", {
-        method: "GET"
-      })
-      .then(() => alert("Requisição enviada com sucesso!"))
-      .catch(() => alert("Erro ao enviar requisição."));
+      adicionarLinha("Webhook do botão 'Apagar Notificação' ainda não configurado.", false);
     }
   </script>
 
